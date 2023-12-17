@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "a11ebb6caafde5f3a8467bc297dda9fe2be1e4cd"
+project_hash = "99023c2d141b679e88bc63f6dd6aaf320c511e9a"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -13,6 +13,11 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[deps.DataPrep]]
+path = "src/DataPrep"
+uuid = "d40174be-394b-476a-94dd-cdf19e683a9d"
+version = "0.1.0"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -37,6 +42,11 @@ version = "1.16.1"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
+
+[[deps.GBPAlgorithm]]
+path = "src/GBPAlgorithm"
+uuid = "52f5dfbb-b0c2-49ff-99e4-0d4f43f103e5"
+version = "0.1.0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]

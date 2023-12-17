@@ -1,0 +1,4 @@
+name = "DataPrep"
+uuid = "d40174be-394b-476a-94dd-cdf19e683a9d"
+authors = ["Felippe Alves <flipgm@gmail.com>"]
+version = "0.1.0"
