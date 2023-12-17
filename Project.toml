@@ -2,9 +2,20 @@ name = "GBPQAMDecoder"
 authors = ["Felippe Alves"]
 
 [deps]
+Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DataPrep = "d40174be-394b-476a-94dd-cdf19e683a9d"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+FGenerators = "4fd0377b-cfdc-4941-97f4-8d7ddbb8981e"
 GBPAlgorithm = "52f5dfbb-b0c2-49ff-99e4-0d4f43f103e5"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NamedTupleTools = "d9ec5142-1e00-5aa0-9d6a-321866360f50"
+Parquet2 = "98572fba-bba0-415d-956f-fa77e587d26d"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
+Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
 DrWatson = "2.13.0"

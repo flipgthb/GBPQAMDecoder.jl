@@ -2,3 +2,11 @@ name = "DataPrep"
 uuid = "d40174be-394b-476a-94dd-cdf19e683a9d"
 authors = ["Felippe Alves <flipgm@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NamedTupleTools = "d9ec5142-1e00-5aa0-9d6a-321866360f50"
+Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
