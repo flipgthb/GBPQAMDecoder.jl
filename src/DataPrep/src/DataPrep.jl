@@ -34,7 +34,7 @@ function parse_model_data(model_data)
 	end	
 end
 
-@info "Sigma is variance mode"
+@info "Sigma is variance in this branch"
 function memory_and_noise_model_table(model_table,k,σ)
 
 	model(μ,σ,w) = MixtureModel(MvNormal,collect(zip(μ,σ)),w)
