@@ -43,7 +43,7 @@ function memory_and_noise_model_table(model_table,k,σ)
 		select!(:triplet,r"mix"=>ByRow(identity)=>AsTable)
 		transform!(
 			[:means,:triplet]=>ByRow((m,t)->map(x->x+collect(t.c),m))=>:means,
-			:covs=>ByRow(c->map(x->x+(σ^2)*I,c))=>:covs,
+			:covs=>ByRow(c->map(x->x+(σ)*I,c))=>:covs,
 			:probs=>ByRow(x->normalize!(x,1))=>:probs
 		)
 		select!(
