@@ -118,9 +118,10 @@ mmap(b,n::Int=size(b,2)) = findmax(b;dims=1)|>
 								Map(Tuple⨟first)|>
 								Take(n)|>
 								collect
-								
+
+@info "M factor is not normalized in this branch"
 @fgenerator function decode(M,P,w::Float64)
-	M|>msg_closure!
+	# M|>msg_closure!
 	P|>msg_closure!
 	msgs = msg_init(M)
 	msgs_up = msg_init(M)
@@ -133,7 +134,7 @@ mmap(b,n::Int=size(b,2)) = findmax(b;dims=1)|>
 end
 
 @fgenerator function decode_random(M,P,w::Float64)
-	M|>msg_closure!
+	# M|>msg_closure!
 	P|>msg_closure!
 	msgs = msg_init(M)
 	msgs_up = msg_init(M)
