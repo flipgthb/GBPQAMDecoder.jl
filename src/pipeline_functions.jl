@@ -44,21 +44,6 @@ function decoding_results(task_info,(niter,decoding_function)::Tuple{Int,<:Funct
     (;noise_info...,extra...,w,Ts,Rs=inverse(Rs))
 end
 
-# function decoding_results(params,(niter,decoding_function)::Tuple{Int,<:Function})
-# 	setup_decoding_tasks(;params...)|>
-# 		Map() do task_info
-# 			(;M,P,w,inverse) = task_info.task
-# 			(;Rs) = decoding_function(M,P,w)|>
-# 					Drop(niter-1)|>
-# 					Take(1)|>
-# 					collect|>only
-# 			(;noise_info,extra) = task_info
-# 			(;Ts) = task_info.signal_info
-# 			(;w) = task_info.task
-# 			(;noise_info...,extra...,w,Ts,Rs=inverse(Rs))
-# 		end
-# end
-
 decoding_results(niter::Int,decoding_function::F) where {F<:Function} = Base.Fix2(decoding_results,(niter,decoding_function))
 
 function tidy_results(res; bitpersymbol=4)

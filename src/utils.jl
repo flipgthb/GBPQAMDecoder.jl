@@ -26,14 +26,6 @@ problem_data(power,with_noise,with_pilot_wave) = (;
 # ----
 uniform_prior(M) = (N=size(M,1); T=size(M,4); ones(N,T)|>GBPAlgorithm.msg_closure!)
 
-# function distance_matrix(Rx, Q)
-# 	y = hcat(Rx...)
-# 	x = sort!([v=>k for (k,v) in Q]; by=first)|>
-# 		Map(last⨟collect)|>
-# 		foldxl(hcat)
-# 	return pairwise(Euclidean(),x,y)
-# end
-
 vec2nt(vec,tag) = namedtuple([Symbol(tag,i) for i in 1:length(vec)])(vec)
 vec2nt(tag::Symbol) = Base.Fix2(vec2nt,tag)
 
@@ -82,17 +74,3 @@ savedata(data,fn) = data|>tuple⨟
 				last
 
 savedata(fn::String) = Base.Fix2(savedata,fn)
-
-# function results_data_file(params; dir="", 
-# 	use_params=(:power,:with_noise,:with_pilot_wave,:k,:sequence_length,:number_of_sequences)
-# )
-# 	fn = NamedTupleTools.select(params,use_params)|>
-# 	pairs|>
-# 	Map() do (f,l)
-# 		string.([f,l])
-# 	end|>
-# 	foldxl(vcat)|>
-# 	x->join(x,"_")|>
-# 	x->"results_$(x)_sequences.parquet"
-# 	return datadir("exp_pro",dir,fn)
-# end
