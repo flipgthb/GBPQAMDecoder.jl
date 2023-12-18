@@ -81,6 +81,8 @@ savedata(data,fn) = data|>tuple⨟
 				only⨟
 				last
 
+savedata(fn::String) = Base.Fix2(savedata,fn)
+
 # function results_data_file(params; dir="", 
 # 	use_params=(:power,:with_noise,:with_pilot_wave,:k,:sequence_length,:number_of_sequences)
 # )
