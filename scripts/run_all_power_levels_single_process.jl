@@ -44,13 +44,6 @@ function summarize_results(res)
     end|>DataFrame
 end
 
-# const number_of_mixture_components = 2
-# const decoding_tasks = (
-#     decoding_task_info(;power,with_noise,with_pilotwave=true,number_of_mixture_components)
-#     for power in -2:8
-#     for with_noise in false:true
-# )
-
 @info "Warming up..."
 let n=3, T=5, w=0.25, niter=10, k=2
 
@@ -79,9 +72,7 @@ end
 
 println("")
 
-# alg_params = (;n=100, T=5, w=0.25, niter=10, k=number_of_mixture_components,date=today())
 function run_it(;n,T,w,niter,k,savedir="decoding_results")
-    # number_of_mixture_components = 2
     decoding_tasks = (
         decoding_task_info(;power,with_noise,with_pilotwave=true,number_of_mixture_components=k)
         for power in -2:8
