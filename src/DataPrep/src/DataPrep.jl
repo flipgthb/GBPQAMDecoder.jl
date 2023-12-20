@@ -29,6 +29,7 @@ function parse_model_data(model_data_table,k,noise_var,qam_encoding)
 				ByRow() do means,covs,weights,p
 					x_c = collect(p)
 					agwm_cov = noise_var*I
+					normalize!(weights,1)
 					components = [MvNormal(μ + x_c,Σ + agwm_cov) for (μ,Σ) in zip(means,covs)]
 					MixtureModel(components,weights)
 				end=>:model
