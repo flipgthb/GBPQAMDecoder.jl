@@ -20,6 +20,9 @@ function msg_init(M::Array{<:Real,4})
 	return (s=msg_init(N,T),d=msg_init(N,T),A=msg_init(N,N,T),S=msg_init(N,N,T))
 end
 
+uniform_prior!(P::Matrix) = fill!(P,1.0)|>msg_closure!
+uniform_prior(M::Array{<:Real,4}) = (N=size(M,1); T=size(M,4); P=Array{Float64,2}(undef,N,T); uniform_prior!(P))
+
 function gbp_equations!(msgs_up,msgs,M,P)
 	(;s,d,A,S) = msgs
 
