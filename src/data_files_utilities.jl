@@ -64,43 +64,66 @@ function decoding_task_info(;
 	return task_info
 end
 
-# function load_problem_data(task_info)
-# 	qam_encoding = dataset(task_info.encoding_file)|>
-# 					DataPrep.get_qam_encoding
+# function resultsfile(task_info)
+# 	(;power,with_noise,with_pilotwave,number_of_mixture_components,
+# 	sequence_length,number_of_sequences,sequence_step) = task_info
 
-# 	k = task_info.number_of_mixture_components
-# 	σ² = task_info.noise_var
+# 	wwo(x) = x ? "w" : "wo"
 
-# 	model_table = @chain task_info.model_file begin
-# 		dataset
-# 		DataPrep.parse_model_data(k,σ²,qam_encoding)
-# 	end
+# 	"results_powerdbm_$(power)_$(wwo(with_noise))_noise"
 
-# 	signal_table = @chain task_info.signal_file begin
-# 		dataset
-# 		DataPrep.parse_signal_data(qam_encoding)
-# 	end
-
-# 	return (;task_info, qam_encoding, model_table, signal_table)
 # end
 
 function load_problem_data(task_info)
 	qam_encoding = dataset(task_info.encoding_file)|>
 					DataPrep.get_qam_encoding
 
-	# k = task_info.number_of_mixture_components
-	# σ² = task_info.noise_var
+	k = task_info.number_of_mixture_components
+	noise_var = task_info.noise_var
 
 	model_table = @chain task_info.model_file begin
 		dataset
-		DataPrep.parse_model_data#(k,σ²,qam_encoding)
+		DataPrep.parse_model_data(k,noise_var,qam_encoding)
 	end
 
 	signal_table = @chain task_info.signal_file begin
 		dataset
-		DataPrep.parse_signal_data#(qam_encoding)
-		DataPrep.signal_constellation_to_symbol(qam_encoding)
+		DataPrep.parse_signal_data(qam_encoding)
 	end
 
 	return (;task_info, qam_encoding, model_table, signal_table)
 end
+
+# from old file pipeline_functions.jl 
+# function tidy_results(res; bitpersymbol=4)
+# 	@chain res begin
+# 		transform!(
+# 			[:Ts,:Rs]=>ByRow((x,y)->count(x.!=y))=>:error_count,
+# 			:Ts=>ByRow(length)=>:signal_length,
+# 		)
+# 		transform!(
+# 			[:error_count,:signal_length]=>ByRow((e,T)->e/(bitpersymbol*T))=>:ber,
+# 			:Ts=>ByRow((x->x.-1)⨟vec2nt(:transmited_t))=>AsTable,
+# 			:Rs=>ByRow((x->x.-1)⨟vec2nt(:decoded_t))=>AsTable
+# 		)
+# 		select!(Not([:Ts,:Rs]))
+# 	end
+# end
+
+# function results_stats(res)
+# 	stats = combine(res,
+# 		:power=>unique⨟only,
+# 		:with_noise=>unique⨟only,
+# 		:with_pilot_wave=>unique⨟only,
+# 		:k=>unique⨟only,
+# 		:ber=>mean
+# 		; renamecols=false
+# 	)
+
+# 	rename!(stats,
+# 		:power=>:power_dbm,
+# 		:k=>:number_of_gaussians
+# 	)
+
+# 	return stats
+# end
