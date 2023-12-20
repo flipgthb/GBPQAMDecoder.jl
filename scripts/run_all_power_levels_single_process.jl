@@ -11,6 +11,7 @@ function solve_decoding_task(task_data,n,T,w,niter; showprogressinfo=true)
     N = length(task_data.qam_encoding)
     M = ones(N,N,N,T)
     P = ones(N,T)
+    b = copy(P)
     p = Progress(n)
     withprogress(Tables.rowtable(task_data.signal_table); interval=10^-2)|>
         Partition(T)|>
@@ -18,7 +19,7 @@ function solve_decoding_task(task_data,n,T,w,niter; showprogressinfo=true)
             y = DataFrame(x)
             DataPrep.memory_factor!(M,task_data.model_table,y.Rx)
             GBPAlgorithm.uniform_prior!(P)
-            (;Rs) = GBPAlgorithm.decode(M,P,w)|>Drop(niter-1)|>Take(1)|>collect|>only
+            (;Rs) = GBPAlgorithm.decode!(b,M,P,w)|>Drop(niter-1)|>Take(1)|>collect|>only
             if showprogressinfo
                 next!(p)
             end

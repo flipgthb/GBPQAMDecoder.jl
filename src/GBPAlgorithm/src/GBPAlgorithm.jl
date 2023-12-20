@@ -115,37 +115,40 @@ function gbp_step_random!(msgs,msgs_up,w,M,P)
 	return (msgs,msgs_up)
 end
 
-mmap(b,n::Int=size(b,2)) = findmax(b;dims=1)|>
-								Drop(1)|>
-								Iterators.flatten|>
-								Map(Tuple⨟first)|>
-								Take(n)|>
-								collect
+mmap(b) = mapreduce(first∘Tuple,vcat,last(findmax(b;dims=1)))
 								
-@fgenerator function decode(M,P,w::Float64)
+@fgenerator function decode!(b,M,P,w::Float64)
 	M|>msg_closure!
 	P|>msg_closure!
 	msgs = msg_init(M)
 	msgs_up = msg_init(M)
-	b = copy(P)
 	while true
 		gbp_step!(msgs,msgs_up,w,M,P)
 		beliefs!(b,msgs,P)
-		@yield (Rs=mmap(b),beliefs=copy(b))
+		@yield (;Rs=mmap(b),beliefs=b)
 	end
 end
 
-@fgenerator function decode_random(M,P,w::Float64)
+function decode(M,P,w::Float64)
+	b = copy(P)
+	decode!(b,M,P,w)
+end
+
+@fgenerator function decode_random!(b,M,P,w::Float64)
 	M|>msg_closure!
 	P|>msg_closure!
 	msgs = msg_init(M)
 	msgs_up = msg_init(M)
-	b = copy(P)
 	while true
 		gbp_step_random!(msgs,msgs_up,w,M,P)
 		beliefs!(b,msgs,P)
 		@yield (Rs=mmap(b),beliefs=copy(b))
 	end
+end
+
+function decode_random(M,P,w)
+	b = copy(P)
+	decode_random!(b,M,P,w)
 end
 
 end # module GBPAlgorithm
