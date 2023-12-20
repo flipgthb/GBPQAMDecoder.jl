@@ -30,12 +30,6 @@ function solve_decoding_task(task_data,n,T,w,niter; showprogressinfo=true)
         foldxl(vcat)
 end
 
-const decoding_tasks = (
-    decoding_task_info(;power,with_noise,with_pilotwave=true,number_of_mixture_components=2)
-    for power in -2:8
-    for with_noise in false:true
-)
-
 function info_msg(task_info,T,n)
     (;power,with_noise,with_pilotwave,number_of_mixture_components) = task_info
     @info "Running algorithm:" "Avg. Power [dBm]"=power "With 4.5dB noise"=with_noise "With pilot wave"=with_pilotwave "Number of mixture components"=number_of_mixture_components "Sequence length"=T "Number of sequences"=n
@@ -45,13 +39,27 @@ function summarize_results(res)
     mapreduce(vcat,res) do r
         (;task_info,results,number_of_sequences,sequence_length) = r
         (;power,with_noise,with_pilotwave,number_of_mixture_components) = task_info
-        ber_gbp=results.error|>mean
+        ber_gbp=(results.error./4)|>mean
         (;power,with_noise,with_pilotwave,number_of_mixture_components,sequence_length,number_of_sequences,ber_gbp)
     end|>DataFrame
 end
 
+# const number_of_mixture_components = 2
+# const decoding_tasks = (
+#     decoding_task_info(;power,with_noise,with_pilotwave=true,number_of_mixture_components)
+#     for power in -2:8
+#     for with_noise in false:true
+# )
+
 @info "Warming up..."
-let n=3, T=5, w=0.25, niter=10
+let n=3, T=5, w=0.25, niter=10, k=2
+
+    decoding_tasks = (
+        decoding_task_info(;power,with_noise,with_pilotwave=true,number_of_mixture_components=k)
+        for power in -1:1
+        for with_noise in false:true
+    )
+
     map(decoding_tasks) do task_info
         @chain task_info begin
             load_problem_data
@@ -70,8 +78,18 @@ let n=3, T=5, w=0.25, niter=10
 end
 
 println("")
-@info "Running GBP decoder for all powers"
-res = let n=100, T=5, w=0.25, niter=10
+
+# alg_params = (;n=100, T=5, w=0.25, niter=10, k=number_of_mixture_components,date=today())
+function run_it(;n,T,w,niter,k,savedir="decoding_results")
+    # number_of_mixture_components = 2
+    decoding_tasks = (
+        decoding_task_info(;power,with_noise,with_pilotwave=true,number_of_mixture_components=k)
+        for power in -2:8
+        for with_noise in false:true
+    )
+    alg_params = (;n, T, w, niter,k,data=today())
+
+    @info "Running GBP decoder for all powers"
     t0 = now()
     res = mapreduce(vcat,decoding_tasks) do task_info
         info_msg(task_info,T,n)
@@ -84,7 +102,20 @@ res = let n=100, T=5, w=0.25, niter=10
     tf = now()
     @info "Done." "Elapsed time"=canonicalize(tf-t0)
 
-    res
+    dir = datadir("exp_pro",savedir)
+    @info "Saving summary..." "Directory"=dir
+    mkpath(dir)
+    @assert ispath(dir)
+    fn = joinpath(dir,savename("results",alg_params,"parquet";equals="_",connector="-"))
+    d = summarize_results(res)|>
+        savedata(fn)
+
+    println("\n")
+    (;summary=d,results=res)
 end
 
-summarize_results(res)
+run_it(;n=2500, T=5, w=0.25, niter=10, k=2,savedir="decoding_results")
+run_it(;n=2500, T=5, w=0.25, niter=10, k=1,savedir="decoding_results")
+run_it(;n=2500, T=5, w=0.25, niter=10, k=3,savedir="decoding_results")
+run_it(;n=2500, T=10, w=0.25, niter=10, k=2,savedir="decoding_results")
+run_it(;n=2500, T=50, w=0.25, niter=10, k=2,savedir="decoding_results");
