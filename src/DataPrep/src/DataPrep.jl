@@ -75,7 +75,7 @@ function memory_factor!(M,mt,Rx)
 end
 
 function memory_factor(mt,Rx)
-	N = round(Int,size(mt,1)^(1/3))#length(q)
+	N = round(Int,size(mt,1)^(1/3))
 	T = length(Rx)
 	M = ones(N,N,N,T)
 	memory_factor!(M,mt,Rx)

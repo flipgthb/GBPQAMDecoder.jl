@@ -23,6 +23,15 @@ end
 uniform_prior!(P::Matrix) = fill!(P,1.0)|>msg_closure!
 uniform_prior(M::Array{<:Real,4}) = (N=size(M,1); T=size(M,4); P=Array{Float64,2}(undef,N,T); uniform_prior!(P))
 
+function pilot_prior!(P,pilot_indices)
+    fill!(P,0.0)
+    for (t,q) in enumerate(pilot_indices)
+        fill!(view(P,q,t),1.0)
+    end
+    GBPAlgorithm.msg_closure!(P)
+    return P
+end
+
 function gbp_equations!(msgs_up,msgs,M,P)
 	(;s,d,A,S) = msgs
 
