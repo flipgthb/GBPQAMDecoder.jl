@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ 16df1fa4-00f2-45ce-a04b-0afd25548712
 using AlgebraOfGraphics,
 	CairoMakie,
@@ -15,8 +25,14 @@ using AlgebraOfGraphics,
 	Statistics,
 	Transducers
 
+# ╔═╡ 321a7033-e2dc-40ad-8d62-c52b7443508b
+using PlutoUI
+
 # ╔═╡ 4d3042f6-0456-4a17-bbdb-e47c252c4e6f
 set_aog_theme!()
+
+# ╔═╡ 8292e863-e9da-4641-957a-3f6eef527261
+TableOfContents()
 
 # ╔═╡ 14e3da97-60bc-4ae9-b263-e1a348a652f4
 md"## Utilities"
@@ -457,33 +473,80 @@ function plot_opt_ber_k(;ks,chunk,parts,step,batch=1,resdir="")
 		)
 end
 
+# ╔═╡ 474c2bbe-0ea3-4dc2-b40d-50128e099f43
+md"## UI"
+
+# ╔═╡ 16cd61e8-c190-4f18-ac1f-d6e8e7b3b2d6
+results_root = joinpath("..","data","results")
+
+# ╔═╡ 21ba8762-d114-4519-b3d0-9405eee942ac
+begin 
+	dir_opts = readdir(results_root)
+	ui_dirselect = @bind resdir Select(dir_opts;default="scaled_sigma")
+end;
+
+# ╔═╡ 47324b89-e993-4589-98e5-31f3a8d20d03
+begin
+	_files_ = readdir(joinpath(results_root,resdir))
+	
+	T_opts = map(_files_) do fn
+		parse(Int,match(r"T_(?<T>\d+)",fn)["T"])
+	end|>unique
+	ui_Tselect = @bind _T_ Select(T_opts)
+
+	date_opts = map(_files_) do fn 
+		match(r"date_(?<date>\d\d\d\d-\d\d-\d\d)",fn)["date"]
+	end|>unique
+	ui_dateselect = @bind _date_ Select(date_opts)
+
+	k_opts = map(_files_) do fn 
+		parse(Int,match(r"k_(?<k>\d)",fn)["k"])
+	end|>unique
+	ui_kselect = @bind _k_ Select(k_opts)
+
+	n_opts = map(_files_) do fn 
+		parse(Int,match(r"n_(?<n>\d+)",fn)["n"])
+	end|>unique
+	ui_nselect = @bind _n_ Select(n_opts)
+
+	niter_opts = map(_files_) do fn 
+		parse(Int,match(r"niter_(?<niter>\d+)",fn)["niter"])
+	end|>unique
+	ui_niterselect = @bind _niter_ Select(niter_opts)
+
+	pilots_opts = map(_files_) do fn 
+		parse(Int,match(r"pilots_(?<pilots>\d+)",fn)["pilots"])
+	end|>unique
+	ui_pilotsselect = @bind _pilots_ Select(pilots_opts)
+
+	w_opts = map(_files_) do fn 
+		parse(Float64,match(r"w_(?<w>\d+\.?\d*)",fn)["w"])
+	end|>unique
+	ui_wselect = @bind _w_ Select(w_opts)
+end;
+
+# ╔═╡ fe1358d4-9b52-4706-8dcf-465ccd38b2c6
+md"Results directory: $(ui_dirselect)"
+
+# ╔═╡ 1d1e0bec-4f2c-4e4b-aa2a-87bd6da28691
+md"""
+T = $(ui_Tselect)
+date = $(ui_dateselect)
+k = $(ui_kselect)
+n = $(ui_nselect)
+niter = $(ui_niterselect)
+pilots = $(ui_pilotsselect)
+w = $(ui_wselect)
+"""
+
 # ╔═╡ 4269328e-db51-4d55-b159-9b9b936df8a6
 md"## Figures"
 
-# ╔═╡ 96ecbb0e-1cec-4cb8-8552-3e2661ecf2d5
-let
-	function test_benchmark_plot()
-		plot_benchmark(0;
-			axis=(;
-				aspect=1,yscale=log10,limits=(nothing,(10^-3.5,1)),
-				xticks=-15:3:15,
-				# yticks=0:1.5:1,
-				xgridvisible=true,
-				ygridvisible=true,
-				xgridstyle=:dot,
-				ygridstyle=:dot,
-			),
-			palettes=(linestyle=[:solid,:dot],marker=[:star4,:circle],
-					  color=plotly_color_palette()[[2,4]])
-		)
-	end
-
-	# saveplot(test_benchmark_plot(),figname(;prefix="benchmark"))
-	with_theme(test_benchmark_plot,theme_dark())
-end
+# ╔═╡ ce294abe-d2bf-4b56-a396-a176f7e678aa
+md"### Performance"
 
 # ╔═╡ f71c5bcb-ed8d-44dc-bd3e-4b8674cd75c0
-let k=2,T=10,n=5000,pilots=0,date="2023-12-21",resdir="scaled_sigma"
+let k=_k_,T=_T_,n=_n_,pilots=_pilots_,date=_date_,resdir="scaled_sigma"
 
 	function test_theme_perf_plot()
 		@chain (;k,T,n,pilots,date) begin
@@ -522,8 +585,11 @@ let k=2,T=10,n=5000,pilots=0,date="2023-12-21",resdir="scaled_sigma"
 	with_theme(test_theme_perf_plot, theme_dark())
 end
 
+# ╔═╡ 53d1bfda-071b-4d3a-9b31-7f01be515021
+md"### Relative performance"
+
 # ╔═╡ 1f473157-e3bc-4756-9518-cc763ade0830
-let k=2,T=10,n=5000,date="2023-12-21",pilots=0,resdir="scaled_sigma"
+let k=_k_,T=_T_,n=_n_,date=_date_,pilots=_pilots_,resdir="scaled_sigma"
 
 	function test_theme_perfratio_plot()
 		@chain (;k,T,n,date,pilots) begin
@@ -563,11 +629,30 @@ let k=2,T=10,n=5000,date="2023-12-21",pilots=0,resdir="scaled_sigma"
 	# with_theme(test_theme_perf_plot, theme_ggplot2())
 end
 
-# ╔═╡ e69b7d0f-58b1-4ffd-a042-9d660b1ce4f1
-[0.0027,0.0045].|>sqrt.|>sqrt
+# ╔═╡ d24e6767-05f7-4aae-8339-54fd0bb71f54
+md"### Benchmark"
 
-# ╔═╡ 86985086-539d-4cd9-bd8e-d3e30c506009
-[0.0027,0.0045].|>x->x^2
+# ╔═╡ 96ecbb0e-1cec-4cb8-8552-3e2661ecf2d5
+let
+	function test_benchmark_plot()
+		plot_benchmark(0;
+			axis=(;
+				aspect=1,yscale=log10,limits=(nothing,(10^-3.5,1)),
+				xticks=-15:3:15,
+				# yticks=0:1.5:1,
+				xgridvisible=true,
+				ygridvisible=true,
+				xgridstyle=:dot,
+				ygridstyle=:dot,
+			),
+			palettes=(linestyle=[:solid,:dot],marker=[:star4,:circle],
+					  color=plotly_color_palette()[[2,4]])
+		)
+	end
+
+	# saveplot(test_benchmark_plot(),figname(;prefix="benchmark"))
+	with_theme(test_benchmark_plot,theme_dark())
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -579,6 +664,7 @@ Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 Parquet2 = "98572fba-bba0-415d-956f-fa77e587d26d"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
 
@@ -590,6 +676,7 @@ Colors = "~0.12.10"
 DataFrames = "~1.6.1"
 Interpolations = "~0.14.7"
 Parquet2 = "~0.2.19"
+PlutoUI = "~0.7.54"
 Transducers = "~0.4.79"
 """
 
@@ -599,7 +686,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "29b60ad2245dfc678abb21d98b79df9b3de0bc00"
+project_hash = "d75c0b7532d54cc0ad4d1bd84ebbf9afb9ef5df2"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -616,6 +703,12 @@ weakdeps = ["ChainRulesCore", "Test"]
 git-tree-sha1 = "222ee9e50b98f51b5d78feb93dd928880df35f06"
 uuid = "398f06c4-4d28-53ec-89ca-5b2656b7603d"
 version = "0.3.0"
+
+[[deps.AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "793501dcd3fa7ce8d375a2c878dca2296232686e"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.2.2"
 
 [[deps.AbstractTrees]]
 git-tree-sha1 = "faa260e4cb5aba097a73fab382dd4b5819d8ec8c"
@@ -1258,6 +1351,24 @@ git-tree-sha1 = "f218fe3736ddf977e0e772bc9a586b2383da2685"
 uuid = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
 version = "0.3.23"
 
+[[deps.Hyperscript]]
+deps = ["Test"]
+git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
+uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
+version = "0.0.4"
+
+[[deps.HypertextLiteral]]
+deps = ["Tricks"]
+git-tree-sha1 = "7134810b1afce04bbc1045ca1985fbe81ce17653"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.5"
+
+[[deps.IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "d75853a0bdbfb1ac815478bacd89cd27b550ace6"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.3"
+
 [[deps.ImageAxes]]
 deps = ["AxisArrays", "ImageBase", "ImageCore", "Reexport", "SimpleTraits"]
 git-tree-sha1 = "2e4520d67b0cef90865b3ef727594d2a58e0e1f8"
@@ -1578,6 +1689,11 @@ git-tree-sha1 = "6c26c5e8a4203d43b5497be3ec5d4e0c3cde240a"
 uuid = "5ced341a-0733-55b8-9ab6-a4889d929147"
 version = "1.9.4+0"
 
+[[deps.MIMEs]]
+git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
+uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
+version = "0.1.4"
+
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
 git-tree-sha1 = "eb006abbd7041c28e0d16260e50a24f8f9104913"
@@ -1834,6 +1950,12 @@ deps = ["ColorSchemes", "Colors", "Dates", "PrecompileTools", "Printf", "Random"
 git-tree-sha1 = "f92e1315dadf8c46561fb9396e525f7200cdc227"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 version = "1.3.5"
+
+[[deps.PlutoUI]]
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
+git-tree-sha1 = "bd7c69c7f7173097e7b5e1be07cee2b8b7447f51"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.54"
 
 [[deps.PolygonOps]]
 git-tree-sha1 = "77b3d3605fc1cd0b42d95eba87dfcd2bf67d5ff6"
@@ -2280,6 +2402,11 @@ version = "0.4.79"
     OnlineStatsBase = "925886fa-5bf2-5e8e-b522-a9147a512338"
     Referenceables = "42d2dcc6-99eb-4e98-b66c-637b7d73030e"
 
+[[deps.Tricks]]
+git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
+uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
+version = "0.1.8"
+
 [[deps.TriplotBase]]
 git-tree-sha1 = "4d4ed7f294cda19382ff7de4c137d24d16adc89b"
 uuid = "981d1d27-644d-49a2-9326-4793e63143c3"
@@ -2289,6 +2416,11 @@ version = "0.1.0"
 git-tree-sha1 = "155515ed4c4236db30049ac1495e2969cc06be9d"
 uuid = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 version = "1.4.3"
+
+[[deps.URIs]]
+git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
+uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
+version = "1.5.1"
 
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
@@ -2475,6 +2607,8 @@ version = "3.5.0+0"
 # ╔═╡ Cell order:
 # ╠═16df1fa4-00f2-45ce-a04b-0afd25548712
 # ╠═4d3042f6-0456-4a17-bbdb-e47c252c4e6f
+# ╠═321a7033-e2dc-40ad-8d62-c52b7443508b
+# ╠═8292e863-e9da-4641-957a-3f6eef527261
 # ╟─14e3da97-60bc-4ae9-b263-e1a348a652f4
 # ╟─cc6b0a1d-fb55-45d1-bb19-1b4f79938c37
 # ╟─1c811aa5-1b23-4a7f-ab5d-31fc9793652a
@@ -2496,11 +2630,18 @@ version = "3.5.0+0"
 # ╟─6ced54b8-7874-44f1-948a-869e962c4fee
 # ╟─5cb12ddd-9769-42ae-ada3-f67613839297
 # ╟─045e667b-791c-47ed-a4ff-51f0f241ea5f
+# ╟─474c2bbe-0ea3-4dc2-b40d-50128e099f43
+# ╟─16cd61e8-c190-4f18-ac1f-d6e8e7b3b2d6
+# ╟─21ba8762-d114-4519-b3d0-9405eee942ac
+# ╟─47324b89-e993-4589-98e5-31f3a8d20d03
+# ╟─fe1358d4-9b52-4706-8dcf-465ccd38b2c6
+# ╟─1d1e0bec-4f2c-4e4b-aa2a-87bd6da28691
 # ╟─4269328e-db51-4d55-b159-9b9b936df8a6
-# ╠═96ecbb0e-1cec-4cb8-8552-3e2661ecf2d5
-# ╠═f71c5bcb-ed8d-44dc-bd3e-4b8674cd75c0
-# ╠═1f473157-e3bc-4756-9518-cc763ade0830
-# ╠═e69b7d0f-58b1-4ffd-a042-9d660b1ce4f1
-# ╠═86985086-539d-4cd9-bd8e-d3e30c506009
+# ╟─ce294abe-d2bf-4b56-a396-a176f7e678aa
+# ╟─f71c5bcb-ed8d-44dc-bd3e-4b8674cd75c0
+# ╟─53d1bfda-071b-4d3a-9b31-7f01be515021
+# ╟─1f473157-e3bc-4756-9518-cc763ade0830
+# ╟─d24e6767-05f7-4aae-8339-54fd0bb71f54
+# ╟─96ecbb0e-1cec-4cb8-8552-3e2661ecf2d5
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
