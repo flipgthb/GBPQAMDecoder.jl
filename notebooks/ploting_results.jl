@@ -268,16 +268,8 @@ function plot_performance_ratio_publication(results_df;
 			scatter_kw=(;markersize=15), lines_kw=(;linewidth=3),
 			draw_kw...
 		)
-	
-	# function _tag_(n,a)
-	# 	tag_a = a == :naive ? "Hard boundary" : "GBP-GMM"
-	# 	tag_n = n ? "with noise" : "without noise"
-	# 	return "$tag_a $(tag_n)"
-	# end
 
-	# tag = (:with_noise,:alg)=>_tag_=>" "
-
-	tag = :with_noise=>(n-> n ? "With 4.5dB noise" : "Without noise")
+	tag = :with_noise=>(n-> n ? "With 4.5dB noise" : "Without noise")=>""
 
 	df = @chain results_df begin
 			unstack(:alg,:ber)
@@ -476,6 +468,9 @@ end
 # ╔═╡ 474c2bbe-0ea3-4dc2-b40d-50128e099f43
 md"## UI"
 
+# ╔═╡ ff395149-bb95-4118-9672-413cb3a2bd7e
+theme_aog(;kw...) = AlgebraOfGraphics.aog_theme(;kw...)|>Attributes
+
 # ╔═╡ 16cd61e8-c190-4f18-ac1f-d6e8e7b3b2d6
 results_root = joinpath("..","data","results")
 
@@ -525,6 +520,15 @@ begin
 	ui_wselect = @bind _w_ Select(w_opts)
 end;
 
+# ╔═╡ 328090ec-e604-4fcf-ad48-99063751370f
+begin
+	ui_yscale_min = @bind _yscalemin_ PlutoUI.Slider(-6:0; default=-5)
+	ui_theme = @bind _theme_ Select([theme_dark=>"Dark",theme_ggplot2=>"GGPlot",theme_aog=>"AoG",theme_light=>"Light"])
+end;
+
+# ╔═╡ 4269328e-db51-4d55-b159-9b9b936df8a6
+md"## Figures"
+
 # ╔═╡ fe1358d4-9b52-4706-8dcf-465ccd38b2c6
 md"Results directory: $(ui_dirselect)"
 
@@ -539,8 +543,11 @@ pilots = $(ui_pilotsselect)
 w = $(ui_wselect)
 """
 
-# ╔═╡ 4269328e-db51-4d55-b159-9b9b936df8a6
-md"## Figures"
+# ╔═╡ d9079b21-86bb-4faa-9220-e1fed724e93d
+md"""
+log₁₀Y-scale min = $(ui_yscale_min) $(_yscalemin_)
+theme: $(ui_theme)
+"""
 
 # ╔═╡ ce294abe-d2bf-4b56-a396-a176f7e678aa
 md"### Performance"
@@ -563,7 +570,7 @@ let k=_k_,T=_T_,n=_n_,pilots=_pilots_,date=_date_,resdir="scaled_sigma"
 					ygridvisible=true,
 					xgridstyle=:dot,
 					ygridstyle=:dot,
-					limits=(nothing,(10^-6,1.0))
+					limits=(nothing,(10^(Float64(_yscalemin_)),1.0))
 				), 
 				palettes=(;
 					marker=[:star4,:star4,:circle,:circle],
@@ -582,7 +589,7 @@ let k=_k_,T=_T_,n=_n_,pilots=_pilots_,date=_date_,resdir="scaled_sigma"
 	end
 
 	# saveplot(test_theme_perf_plot(),figname(;prefix="performance",k,T,nseq))
-	with_theme(test_theme_perf_plot, theme_dark())
+	with_theme(test_theme_perf_plot, _theme_())
 end
 
 # ╔═╡ 53d1bfda-071b-4d3a-9b31-7f01be515021
@@ -625,7 +632,7 @@ let k=_k_,T=_T_,n=_n_,date=_date_,pilots=_pilots_,resdir="scaled_sigma"
 	end
 
 	# saveplot(test_theme_perfratio_plot(),figname(;prefix="performance_ratio",k,T,nseq))
-	with_theme(test_theme_perfratio_plot, theme_dark())
+	with_theme(test_theme_perfratio_plot, _theme_())
 	# with_theme(test_theme_perf_plot, theme_ggplot2())
 end
 
@@ -635,9 +642,9 @@ md"### Benchmark"
 # ╔═╡ 96ecbb0e-1cec-4cb8-8552-3e2661ecf2d5
 let
 	function test_benchmark_plot()
-		plot_benchmark(0;
+		plot_benchmark(_pilots_;
 			axis=(;
-				aspect=1,yscale=log10,limits=(nothing,(10^-3.5,1)),
+				aspect=1,yscale=log10,limits=(nothing,(10^-5,1)),
 				xticks=-15:3:15,
 				# yticks=0:1.5:1,
 				xgridvisible=true,
@@ -651,7 +658,7 @@ let
 	end
 
 	# saveplot(test_benchmark_plot(),figname(;prefix="benchmark"))
-	with_theme(test_benchmark_plot,theme_dark())
+	with_theme(test_benchmark_plot,_theme_())
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -2627,16 +2634,19 @@ version = "3.5.0+0"
 # ╟─ba61f3d9-a487-4fe0-854a-2169b907964c
 # ╟─59a1b682-577a-4851-8e17-e7cbf2e8fa07
 # ╟─19c491d0-b361-4369-a143-5bd752aa07f2
-# ╟─6ced54b8-7874-44f1-948a-869e962c4fee
+# ╠═6ced54b8-7874-44f1-948a-869e962c4fee
 # ╟─5cb12ddd-9769-42ae-ada3-f67613839297
 # ╟─045e667b-791c-47ed-a4ff-51f0f241ea5f
 # ╟─474c2bbe-0ea3-4dc2-b40d-50128e099f43
+# ╟─ff395149-bb95-4118-9672-413cb3a2bd7e
 # ╟─16cd61e8-c190-4f18-ac1f-d6e8e7b3b2d6
-# ╟─21ba8762-d114-4519-b3d0-9405eee942ac
-# ╟─47324b89-e993-4589-98e5-31f3a8d20d03
+# ╠═21ba8762-d114-4519-b3d0-9405eee942ac
+# ╠═47324b89-e993-4589-98e5-31f3a8d20d03
+# ╟─328090ec-e604-4fcf-ad48-99063751370f
+# ╟─4269328e-db51-4d55-b159-9b9b936df8a6
 # ╟─fe1358d4-9b52-4706-8dcf-465ccd38b2c6
 # ╟─1d1e0bec-4f2c-4e4b-aa2a-87bd6da28691
-# ╟─4269328e-db51-4d55-b159-9b9b936df8a6
+# ╟─d9079b21-86bb-4faa-9220-e1fed724e93d
 # ╟─ce294abe-d2bf-4b56-a396-a176f7e678aa
 # ╟─f71c5bcb-ed8d-44dc-bd3e-4b8674cd75c0
 # ╟─53d1bfda-071b-4d3a-9b31-7f01be515021
