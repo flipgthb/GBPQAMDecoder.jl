@@ -3,30 +3,30 @@ savedata(data,fn) = (Parquet2.writefile(fn,data); data)
 savedata(fn::String) = Base.Fix2(savedata,fn)
 
 model_data_file(power) = datadir(
-	"exp_raw","model_data",
-	"model_parameters_pdbm_$(power)_wo_noise.parquet"
+	"qam_data",
+	"model_power_$(power)_wo_noise.parquet"
 )
 
-signal_data_file(power,with_noise::Bool,with_pilot_wave::Bool) = datadir(
-	"exp_raw","signal_data",
-	"points_pdbm_$(power)_$(with_noise ? "w" : "wo")_noise_$(with_pilot_wave ? "w" : "wo")_pilotwave.parquet"
+signal_data_file(power::Int,with_noise::Bool,pilots::Int) = datadir(
+	"qam_data",
+	"points_power_$(power)_pilots_$(pilots)_$(with_noise ? "w" : "wo")_noise.parquet"
 )
 
-noise_data_file() = datadir("exp_raw","noise_info.parquet")
+noise_data_file() = datadir("noise_info.parquet")
 
-constellation_data_file() = datadir("exp_raw","constellation_info.parquet")
+constellation_data_file() = datadir("constellation_info.parquet")
 
 dataset(fn) = Parquet2.Dataset(fn)|>DataFrame
 
 function decoding_task_info(;
 		power::Int,
 		with_noise::Bool,
-		with_pilotwave::Bool=true,
+		pilots::Int,
 		number_of_mixture_components::Int
 	)
 
 	model_file = model_data_file(power)
-	signal_file = signal_data_file(power,with_noise,with_pilotwave)
+	signal_file = signal_data_file(power,with_noise,pilots)
 	encoding_file = constellation_data_file()
 
 	(;sigma,scale) = @chain noise_data_file() begin
@@ -43,7 +43,7 @@ function decoding_task_info(;
 	task_info = (;
 		power,
 		with_noise,
-		with_pilotwave,
+		pilots,
 		noise_sigma=sigma, 
 		noise_var=sigma^2,
 		noise_scale=scale,
