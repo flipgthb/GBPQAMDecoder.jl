@@ -34,7 +34,7 @@ function decoding_task_info(;
 		subset(:pdbm=>ByRow(p->p==power))
 		map(eachrow(_)) do r
 				power=r.pdbm
-				sigma = with_noise ? r.sigma : 0.0
+				sigma = with_noise ? r.sigma*r.scale : 0.0
 				(;power,sigma,scale=r.scale,with_noise)
 			end
 		only

@@ -72,13 +72,15 @@ end
 
 println("")
 
-function run_it(;n,T,w,niter,k,pilots,savedir="decoding_results")
+# add_noise_var(task_info) = (;task_info...,noise_var=sqrt(task_info.noise_sigma))
+
+function run_it(;n,T,w,niter,k,pilots,savedir="")
     decoding_tasks = (
-        decoding_task_info(;power,with_noise,pilots,number_of_mixture_components=k)
+        decoding_task_info(;power,with_noise,pilots,number_of_mixture_components=k)#|>add_noise_var
         for power in -2:8
         for with_noise in false:true
     )
-    alg_params = (;n, T, w, niter,k,pilots,data=today())
+    alg_params = (;n, T, w, niter,k,pilots,date=today())
 
     @info "Running GBP decoder for all powers"
     t0 = now()
@@ -105,8 +107,21 @@ function run_it(;n,T,w,niter,k,pilots,savedir="decoding_results")
     (;summary=d,results=res)
 end
 
-run_it(;n=2500, T=10, w=0.25, niter=10, k=2, pilots=0, savedir="decoding_results");
-run_it(;n=2500,  T=5, w=0.25, niter=10, k=2, pilots=0, savedir="decoding_results");
-# run_it(;n=2500, T=5, w=0.25, niter=10, k=1, pilots=0, savedir="decoding_results");
-# run_it(;n=2500, T=5, w=0.25, niter=10, k=3, pilots=0, savedir="decoding_results");
-# run_it(;n=2500, T=50, w=0.25, niter=10, k=2, pilots=0, savedir="decoding_results");
+function simple_cases(;savedir)
+    run_it(;n=2500,  T=5, w=0.25, niter=10, k=2, pilots=0, savedir)
+    run_it(;n=2500, T=10, w=0.25, niter=10, k=2, pilots=0, savedir)
+    return
+end
+
+println("""
+Run `run_it(; n::Int, T::Int, w::Float64, niter::Int, k::Int, pilots::Int[, savedir::String])`
+to run the GBP decoding algorithm for all available power levels and noise conditions given:
+    - `n` sequences
+    - each sequence with length `T`
+    - using a mixture with `k` Gaussian components                (k in {1,2,3,4,5})
+    - using a gradient descent step of `w`                        (w in 0..1) 
+    - on signal generated with `pilots` waves every 100 symbols   (pilots in {0,1,2,3})
+    - and optionally, saves it to a subdirectory `datadir("results",savedir)`
+
+Run `simple_cases(;savedir)` to run the GBP algorithm for a couple of selected cases.
+""")

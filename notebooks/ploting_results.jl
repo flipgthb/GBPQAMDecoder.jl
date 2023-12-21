@@ -80,40 +80,51 @@ figname(; prefix="",params...) = generate_name(params; prefix, ext="pdf")
 md"## Data"
 
 # ╔═╡ 7242e7c3-4d9c-4bde-a8d5-29aa25fb651e
-function load_benchmark_data()
-	benchmark_data_wo_noise = joinpath(
-			"..","data","exp_pro","benchmark",
-			"z1200_wo_noise.parquet"
-		)|>
-		Parquet2.Dataset|>
-		DataFrame
+function load_benchmark_data(pilots)
+	benchmark_data_wo_noise = @chain joinpath(
+			"..","data","results","benchmarks",
+			"ber_pilots_$(pilots)_wo_noise.parquet"
+		) begin
+			Parquet2.Dataset
+			DataFrame
+			select!(
+				:pdbm=>:power,
+				:pdbm=>ByRow(x->false)=>:with_noise,
+				:ber=>:ber_naive
+			)
+	end
 
-	benchmark_data_w_noise = joinpath(
-			"..","data","exp_pro","benchmark",
-			"z1200_w_noise.parquet"
-		)|>
-		Parquet2.Dataset|>
-		DataFrame
+	benchmark_data_w_noise = @chain joinpath(
+			"..","data","results","benchmarks",
+			"ber_pilots_$(pilots)_w_noise.parquet"
+		) begin
+			Parquet2.Dataset
+			DataFrame
+			select!(
+				:pdbm=>:power,
+				:pdbm=>ByRow(x->true)=>:with_noise,
+				:ber=>:ber_naive
+			)
+	end
  
-	d = select(
-		transform!(vcat(benchmark_data_wo_noise,benchmark_data_w_noise),
-			:noise_figure_db=>ByRow(n->n>0)=>:with_noise,
-		),
-		:p_ave_dbm=>:power,:with_noise,:ber
-	)
+	d = vcat(benchmark_data_wo_noise,benchmark_data_w_noise)
 	
 	return d
 end
 
 # ╔═╡ 10462413-e7f9-4570-94df-15f63a05abc2
-function load_results_data(; k,T,nseq,resdir="",prefix="")
-	d = joinpath(
-		"..","data","exp_pro", resdir,
-		prefix*ifelse(isempty(prefix),"","_")*"nseq_$(nseq)_k_$(k)_T_$(T)_results.parquet"
-	)|>
-	Parquet2.Dataset|>
-	DataFrame
-	return d
+function load_results_data(; k,T,date,n,pilots,resdir="",prefix="results")
+	@chain joinpath(
+		"..","data","results", resdir,
+		prefix*"-T_$(T)-date_$(date)-k_$(k)-n_$(n)-niter_10-pilots_$(pilots)-w_0.25.parquet"
+	) begin
+		Parquet2.Dataset
+		DataFrame
+		rename!(
+			:number_of_mixture_components=>:k,
+			:sequence_length=>:T
+		)
+	end
 end
 
 # ╔═╡ 789bebc7-13e4-4738-a9b2-8aed459019c9
@@ -134,9 +145,9 @@ function summarize_results(
 end
 
 # ╔═╡ b96c4fc4-3699-404a-a92f-d5eee4a8e229
-function load_results_and_benchmark_data(k,T,nseq; kw...)
-	bd = rename!(load_benchmark_data(), :ber=>:ber_naive)
-	rd = rename!(summarize_results(k,T,nseq; kw...), :ber=>:ber_gbp)
+function load_results_and_benchmark_data(;k,T,n,pilots,date,kw...)
+	bd = load_benchmark_data(pilots)
+	rd = load_results_data(;k,T,n,pilots,date,kw...)
 
 	@chain (rd,bd) begin
 		DataFrames.leftjoin(_...; on=[:power,:with_noise], makeunique=true)
@@ -281,52 +292,25 @@ function plot_performance_ratio_publication(results_df;
 end
 
 # ╔═╡ 6ced54b8-7874-44f1-948a-869e962c4fee
-function plot_benchmark(; 
+function plot_benchmark(pilots; 
 			marker=:circle,markersize=12,
 			linestyle=:dot,linewidth=3,
 			draw_kw...
 		)
-	benchmark_data_wo_noise = joinpath(
-			"..","data","exp_pro","benchmark",
-			"z1200_wo_noise.parquet"
-		)|>
-		Parquet2.Dataset|>
-		DataFrame
 
-	benchmark_data_w_noise = joinpath(
-			"..","data","exp_pro","benchmark",
-			"z1200_w_noise.parquet"
-		)|>
-		Parquet2.Dataset|>
-		DataFrame
-
-	benchmark_data = append!(
-		benchmark_data_wo_noise[:,[:p_ave_dbm,:ber,:noise_figure_db]],
-		benchmark_data_w_noise[:,[:p_ave_dbm,:ber,:noise_figure_db]]
-	)
-
-	benchmark_data[!,:noise_cat] = map(n->n < 0 ? "Hard boundary without noise" : "Hard boundary with 4.5dB noise", benchmark_data[!,:noise_figure_db])
-
-	benchmark_data = rename(benchmark_data[!,[:p_ave_dbm,:ber,:noise_cat]],:p_ave_dbm=>:power_dbm)
-
-	benchmark_data[!,:safe_naive_ber] = map(e->e+eps(),benchmark_data[!,:ber])
-	benchmark_data[!,:algorithm] .= :naive 
-	
-	bd = benchmark_data[:,[:power_dbm,:noise_cat,:algorithm,:safe_naive_ber]]
+	bd = load_benchmark_data(pilots)
 	
 	p = data(bd)*
-		mapping(:power_dbm=>"Avg. Power [dBm]",:safe_naive_ber=>"BER",
-				color=:noise_cat=>"")*
-				(
-					visual(Scatter; markersize) + 
-					visual(Lines; linewidth,linestyle)
-				)
+			mapping(:power=>"Avg. Power [dBm]",:ber_naive=>(e->e+eps())=>"BER",
+					color=:with_noise=>renamer([false=>"Without noise",true=>"With 4.5dB noise"])=>"")*
+			(
+				visual(Scatter; markersize) + 
+				visual(Lines; linewidth,linestyle)
+			)
 
 	f = Figure()
 
 	draw!(f[1,1], p; draw_kw...)
-		# axis=(;aspect=1,yscale=log10,limits),
-		# palettes
 
 	function make_legend_element(;marker,markersize,linestyle,color)
 		[LineElement(;linestyle,color),
@@ -479,7 +463,7 @@ md"## Figures"
 # ╔═╡ 96ecbb0e-1cec-4cb8-8552-3e2661ecf2d5
 let
 	function test_benchmark_plot()
-		plot_benchmark(;
+		plot_benchmark(0;
 			axis=(;
 				aspect=1,yscale=log10,limits=(nothing,(10^-3.5,1)),
 				xticks=-15:3:15,
@@ -494,16 +478,16 @@ let
 		)
 	end
 
-	saveplot(test_benchmark_plot(),figname(;prefix="benchmark"))
+	# saveplot(test_benchmark_plot(),figname(;prefix="benchmark"))
 	with_theme(test_benchmark_plot,theme_dark())
 end
 
 # ╔═╡ f71c5bcb-ed8d-44dc-bd3e-4b8674cd75c0
-let k=2,T=10,nseq=2500
+let k=2,T=10,n=5000,pilots=0,date="2023-12-21",resdir="scaled_sigma"
 
 	function test_theme_perf_plot()
-		@chain (k,T,nseq) begin
-			load_results_and_benchmark_data(_...; prefix="decode_random",resdir="sigma-is-variance")
+		@chain (;k,T,n,pilots,date) begin
+			load_results_and_benchmark_data(;_..., resdir)
 			plot_performance_publication(_;
 				lines_kw=(;linewidth=2),
 				scatter_kw=(;markersize=12),
@@ -539,11 +523,11 @@ let k=2,T=10,nseq=2500
 end
 
 # ╔═╡ 1f473157-e3bc-4756-9518-cc763ade0830
-let k=2,T=10,nseq=2500
+let k=2,T=10,n=5000,date="2023-12-21",pilots=0,resdir="scaled_sigma"
 
 	function test_theme_perfratio_plot()
-		@chain (k,T,nseq) begin
-			load_results_and_benchmark_data(_...; prefix="decode_random",resdir="sigma-is-variance")
+		@chain (;k,T,n,date,pilots) begin
+			load_results_and_benchmark_data(;_..., resdir)
 			plot_performance_ratio_publication(_;
 				lines_kw=(;linewidth=2),
 				scatter_kw=(;markersize=12),
@@ -580,10 +564,10 @@ let k=2,T=10,nseq=2500
 end
 
 # ╔═╡ e69b7d0f-58b1-4ffd-a042-9d660b1ce4f1
-
+[0.0027,0.0045].|>sqrt.|>sqrt
 
 # ╔═╡ 86985086-539d-4cd9-bd8e-d3e30c506009
-
+[0.0027,0.0045].|>x->x^2
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -593,7 +577,6 @@ CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 Parquet2 = "98572fba-bba0-415d-956f-fa77e587d26d"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
@@ -605,7 +588,6 @@ CairoMakie = "~0.10.12"
 Chain = "~0.5.0"
 Colors = "~0.12.10"
 DataFrames = "~1.6.1"
-Distributions = "~0.25.104"
 Interpolations = "~0.14.7"
 Parquet2 = "~0.2.19"
 Transducers = "~0.4.79"
@@ -617,7 +599,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "0c4b4fbcc99db4282195ae2029f20321189ed38b"
+project_hash = "29b60ad2245dfc678abb21d98b79df9b3de0bc00"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
