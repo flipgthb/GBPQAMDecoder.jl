@@ -129,8 +129,8 @@ function load_benchmark_data(pilots)
 end
 
 # ╔═╡ 10462413-e7f9-4570-94df-15f63a05abc2
-function load_results_data(; k,T,date,n,pilots,resdir="",prefix="results")
-	@chain joinpath(
+function load_results_data(; k,T,date,n,pilots,resdir="",prefix="results",is_sim=false)
+	x = @chain joinpath(
 		"..","data","results", resdir,
 		prefix*"-T_$(T)-date_$(date)-k_$(k)-n_$(n)-niter_10-pilots_$(pilots)-w_0.25.parquet"
 	) begin
@@ -141,6 +141,10 @@ function load_results_data(; k,T,date,n,pilots,resdir="",prefix="results")
 			:sequence_length=>:T
 		)
 	end
+	if is_sim
+		transform!(x,:ber_gbp=>ByRow(x->x/0.75)=>:ber_gbp)
+	end
+	return x
 end
 
 # ╔═╡ 789bebc7-13e4-4738-a9b2-8aed459019c9
@@ -477,12 +481,12 @@ results_root = joinpath("..","data","results")
 # ╔═╡ 21ba8762-d114-4519-b3d0-9405eee942ac
 begin 
 	dir_opts = readdir(results_root)
-	ui_dirselect = @bind resdir Select(dir_opts;default="scaled_sigma")
+	ui_dirselect = @bind _resdir_ Select(dir_opts;default="scaled_sigma")
 end;
 
 # ╔═╡ 47324b89-e993-4589-98e5-31f3a8d20d03
 begin
-	_files_ = readdir(joinpath(results_root,resdir))
+	_files_ = readdir(joinpath(results_root,_resdir_))
 	
 	T_opts = map(_files_) do fn
 		parse(Int,match(r"T_(?<T>\d+)",fn)["T"])
@@ -523,6 +527,7 @@ end;
 # ╔═╡ 328090ec-e604-4fcf-ad48-99063751370f
 begin
 	ui_yscale_min = @bind _yscalemin_ PlutoUI.Slider(-6:0; default=-5)
+	ui_yscale_max = @bind _yscalemax_ PlutoUI.Slider(0:15; default=3.5)
 	ui_theme = @bind _theme_ Select([theme_dark=>"Dark",theme_ggplot2=>"GGPlot",theme_aog=>"AoG",theme_light=>"Light"])
 end;
 
@@ -546,6 +551,11 @@ w = $(ui_wselect)
 # ╔═╡ d9079b21-86bb-4faa-9220-e1fed724e93d
 md"""
 log₁₀Y-scale min = $(ui_yscale_min) $(_yscalemin_)
+Y-scale max = $(ui_yscale_max) $(_yscalemax_)
+"""
+
+# ╔═╡ 802c6d39-eb4f-4e24-9deb-e61e73d76bbf
+md"""
 theme: $(ui_theme)
 """
 
@@ -553,11 +563,12 @@ theme: $(ui_theme)
 md"### Performance"
 
 # ╔═╡ f71c5bcb-ed8d-44dc-bd3e-4b8674cd75c0
-let k=_k_,T=_T_,n=_n_,pilots=_pilots_,date=_date_,resdir="scaled_sigma"
+let k=_k_,T=_T_,n=_n_,pilots=_pilots_,date=_date_,resdir=_resdir_
+	is_sim = _resdir_ == "simulations"
 
 	function test_theme_perf_plot()
 		@chain (;k,T,n,pilots,date) begin
-			load_results_and_benchmark_data(;_..., resdir)
+			load_results_and_benchmark_data(;_..., resdir, is_sim)
 			plot_performance_publication(_;
 				lines_kw=(;linewidth=2),
 				scatter_kw=(;markersize=12),
@@ -596,11 +607,12 @@ end
 md"### Relative performance"
 
 # ╔═╡ 1f473157-e3bc-4756-9518-cc763ade0830
-let k=_k_,T=_T_,n=_n_,date=_date_,pilots=_pilots_,resdir="scaled_sigma"
+let k=_k_,T=_T_,n=_n_,date=_date_,pilots=_pilots_,resdir=_resdir_
 
+	is_sim = _resdir_ == "simulations"
 	function test_theme_perfratio_plot()
 		@chain (;k,T,n,date,pilots) begin
-			load_results_and_benchmark_data(;_..., resdir)
+			load_results_and_benchmark_data(;_..., resdir,is_sim)
 			plot_performance_ratio_publication(_;
 				lines_kw=(;linewidth=2),
 				scatter_kw=(;markersize=12),
@@ -608,12 +620,12 @@ let k=_k_,T=_T_,n=_n_,date=_date_,pilots=_pilots_,resdir="scaled_sigma"
 					aspect=1,
 					# yscale=log10,
 					xticks=-2:8,
-					yticks=0:0.5:3.5,
+					yticks=0:0.5:+_yscalemax_,
 					xgridvisible=true,
 					ygridvisible=true,
 					xgridstyle=:dot,
 					ygridstyle=:dot,
-					limits=(nothing,(0,3.5))
+					limits=(nothing,(0,_yscalemax_))
 				), 
 				palettes=(;
 					marker=[:star4,:star4,:circle,:circle],
@@ -2634,19 +2646,20 @@ version = "3.5.0+0"
 # ╟─ba61f3d9-a487-4fe0-854a-2169b907964c
 # ╟─59a1b682-577a-4851-8e17-e7cbf2e8fa07
 # ╟─19c491d0-b361-4369-a143-5bd752aa07f2
-# ╠═6ced54b8-7874-44f1-948a-869e962c4fee
+# ╟─6ced54b8-7874-44f1-948a-869e962c4fee
 # ╟─5cb12ddd-9769-42ae-ada3-f67613839297
 # ╟─045e667b-791c-47ed-a4ff-51f0f241ea5f
 # ╟─474c2bbe-0ea3-4dc2-b40d-50128e099f43
 # ╟─ff395149-bb95-4118-9672-413cb3a2bd7e
 # ╟─16cd61e8-c190-4f18-ac1f-d6e8e7b3b2d6
-# ╠═21ba8762-d114-4519-b3d0-9405eee942ac
-# ╠═47324b89-e993-4589-98e5-31f3a8d20d03
+# ╟─21ba8762-d114-4519-b3d0-9405eee942ac
+# ╟─47324b89-e993-4589-98e5-31f3a8d20d03
 # ╟─328090ec-e604-4fcf-ad48-99063751370f
 # ╟─4269328e-db51-4d55-b159-9b9b936df8a6
 # ╟─fe1358d4-9b52-4706-8dcf-465ccd38b2c6
 # ╟─1d1e0bec-4f2c-4e4b-aa2a-87bd6da28691
 # ╟─d9079b21-86bb-4faa-9220-e1fed724e93d
+# ╟─802c6d39-eb4f-4e24-9deb-e61e73d76bbf
 # ╟─ce294abe-d2bf-4b56-a396-a176f7e678aa
 # ╟─f71c5bcb-ed8d-44dc-bd3e-4b8674cd75c0
 # ╟─53d1bfda-071b-4d3a-9b31-7f01be515021
