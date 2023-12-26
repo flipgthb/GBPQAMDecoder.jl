@@ -3,9 +3,12 @@ module GBPAlgorithm
 using FGenerators, LinearAlgebra, StatsBase, Transducers, Tullio
 
 symbol_axes(x) = ndims(x)
+
 eachsymbol(x) = eachslice(x;dims=symbol_axes(x))
+
 msg_axes(x) = tuple(1:(ndims(x)-1)...)
 msg_axes(x::Vector) = 1
+
 eachmsg(x) = eachslice(x;dims=msg_axes(x))
 
 closure!(x) = normalize!(x,1)
@@ -15,149 +18,103 @@ msg_closure!(x) = (map!(closure!,eachsymbol(x),eachsymbol(x)); x)
 msg_sum(x) = sum(x; dims=msg_axes(x))
 
 msg_init(dims...) = fill(1.0,dims...)|>msg_closure!
-function msg_init(M::Array{<:Real,4})
-	N, T = size(M,1),size(M,4)
-	return (s=msg_init(N,T),d=msg_init(N,T),A=msg_init(N,N,T),S=msg_init(N,N,T))
+reset_msg!(m) = (fill!(m,1.0)|>msg_closure!; nothing)
+
+struct GBPMessages
+	s
+	d
+	A
+	S
 end
 
-uniform_prior!(P::Matrix) = fill!(P,1.0)|>msg_closure!
-uniform_prior(M::Array{<:Real,4}) = (N=size(M,1); T=size(M,4); P=Array{Float64,2}(undef,N,T); uniform_prior!(P))
+GBPMessages(N,T) = GBPMessages(msg_init(N,T),msg_init(N,T),msg_init(N,N,T),msg_init(N,N,T))
 
-function pilot_prior!(P,pilot_indices)
-    fill!(P,0.0)
-    for (t,q) in enumerate(pilot_indices)
-        fill!(view(P,q,t),1.0)
-    end
-    GBPAlgorithm.msg_closure!(P)
-    return P
+reset_msg!(m::GBPMessages) = (reset_msg!(m.s);reset_msg!(m.d);reset_msg!(m.A);reset_msg!(m.S); nothing)
+
+abstract type AbstractGBPDecoder end
+
+struct GBPDecoder <: AbstractGBPDecoder
+	msgs::GBPMessages
+	msgs_up::GBPMessages
+	w::Float64
 end
 
-function gbp_equations!(msgs_up,msgs,M,P)
-	(;s,d,A,S) = msgs
+GBPDecoder(N::Int,T::Int,w::Float64) = GBPDecoder(GBPMessages(N,T),GBPMessages(N,T),w)
 
-	@tullio msgs_up.s[c,t] = P[l,mod(t-1)]*s[l,mod(t-1)]*A[l,c,t]*S[l,c,t]
-	@tullio msgs_up.d[c,t] = P[r,mod(t+1)]*d[r,mod(t+1)]*A[c,r,mod(t+1)]*S[c,r,mod(t+1)]
+reset_msg!(X::GBPDecoder) = (reset_msg!(X.msgs); reset_msg!(X.msgs_up); nothing)
 
-	msg_closure!(msgs_up.s)
-	msg_closure!(msgs_up.d)
-	
-	@tullio msgs_up.A[l,c,t] = P[k,mod(t-2)]*s[k,mod(t-2)]*A[k,l,mod(t-1)]*M[k,l,c,mod(t-1)]/msgs_up.s[l,mod(t-1)]
-	@tullio msgs_up.S[l,c,t] = P[r,mod(t+1)]*d[r,mod(t+1)]*S[c,r,mod(t+1)]*M[l,c,r,t]/msgs_up.d[c,t]
-
-	msg_closure!(msgs_up.A)
-	msg_closure!(msgs_up.S)
-
-	return msgs_up
-end
-
-function msg_gradient_descent!(msgs,msgs_up,w)
-	# cw = 1-w
-	# w2 = w^2
-	# cw2 = 1-w2
-	@tullio msgs.s[c,t] = (1-w)*msgs.s[c,t] + (w)*msgs_up.s[c,t]
-	@tullio msgs.d[c,t] = (1-w)*msgs.d[c,t] + (w)*msgs_up.d[c,t]
-	@tullio msgs.A[l,c,t] = (1-w^2)*msgs.A[l,c,t] + (w^2)*msgs_up.A[l,c,t]
-	@tullio msgs.S[l,c,t] = (1-w^2)*msgs.S[l,c,t] + (w^2)*msgs_up.S[l,c,t]
-	return msgs
-end
-
-function beliefs!(b,msgs,P)
-	@tullio b[i,t] = P[i,t]*msgs.s[i,t]*msgs.d[i,t]
-	msg_closure!(b)
-	return b
-end
-
-beliefs(msgs,P) = beliefs!(copy(P),msgs,P)
-
-function gbp_step!(msgs,msgs_up,w,M,P) 
-	gbp_equations!(msgs_up,msgs,M,P)
-	msg_gradient_descent!(msgs,msgs_up,w)
-	return (msgs,msgs_up)
-end
-
-function gbp_step_random!(msgs,msgs_up,w,M,P)
-	(;s,d,A,S) = msgs
-	T = size(s,2)
-
-	foreach(sample(1:T,T;replace=false)) do t
-		tl = mod(t-1,axes(s,2))
-		st_up = @view msgs_up.s[:,t]
-		stl = @view s[:,tl]
-		Ptl = @view P[:,tl]
-		At = @view A[:,:,t]
-		St = @view S[:,:,t]
-		@tullio st_up[c] = Ptl[l]*stl[l]*At[l,c]*St[l,c]
-		closure!(st_up)
-		st = @view s[:,t]
-		@tullio st[c] = (1-w)*st[c] + (w)*st_up[c]
-		
-		tr = mod(t+1,axes(s,2))
-		dt_up = @view msgs_up.d[:,t]
-		dtr = @view d[:,tr]
-		Ptr = @view P[:,tr]
-		Atr = @view A[:,:,tr]
-		Str = @view S[:,:,tr]
-		@tullio dt_up[c] = Ptr[r]*dtr[r]*Atr[c,r]*Str[c,r]
-		closure!(dt_up)
-		dt = @view d[:,t]
-		@tullio dt[c] = (1-w)*dt[c] + (w)*dt_up[c]
-	
-		tll = mod(t-2,axes(s,2))
-		At_up = @view msgs_up.A[:,:,t]
-		Ptll = @view P[:,tll]
-		stll = @view s[:,tll]
-		Atl = @view A[:,:,tl]
-		Mtl = @view M[:,:,:,tl]
-		@tullio At_up[l,c] = Ptll[k]*stll[k]*Atl[k,l]*Mtl[k,l,c]/stl[l] # maybe wrong
-		closure!(At_up)
-		At = @view A[:,:,t]
-		@tullio At[l,c] = (1-w^2)*At[l,c] + (w^2)*At_up[l,c]
-	
-		St_up = @view msgs_up.S[:,:,t]
-		Mt = @view M[:,:,:,t]
-		@tullio St_up[l,c] = Ptr[r]*dtr[r]*Str[c,r]*Mt[l,c,r]/dt[c]
-		closure!(St_up)
-		St = @view S[:,:,t]
-		@tullio St[l,c] = (1-w^2)*St[l,c] + (w^2)*St_up[l,c]
-	end
-
-	return (msgs,msgs_up)
-end
-
-mmap(b) = mapreduce(first∘Tuple,vcat,last(findmax(b;dims=1)))
-								
-@fgenerator function decode!(b,M,P,w::Float64)
-	M|>msg_closure!
-	P|>msg_closure!
-	msgs = msg_init(M)
-	msgs_up = msg_init(M)
+@fgenerator function (X::GBPDecoder)(F)
 	while true
-		gbp_step!(msgs,msgs_up,w,M,P)
-		beliefs!(b,msgs,P)
-		@yield (;Rs=mmap(b),beliefs=b)
+		gbp_step!(X,F)
+		beliefs!(F,X)
+		@yield F
 	end
 end
 
-function decode(M,P,w::Float64)
-	b = copy(P)
-	decode!(b,M,P,w)
+struct Factors
+	M
+	P
+	b
+	Rs
 end
 
-@fgenerator function decode_random!(b,M,P,w::Float64)
-	M|>msg_closure!
-	P|>msg_closure!
-	msgs = msg_init(M)
-	msgs_up = msg_init(M)
-	while true
-		gbp_step_random!(msgs,msgs_up,w,M,P)
-		beliefs!(b,msgs,P)
-		@yield (Rs=mmap(b),beliefs=copy(b))
+Factors(N,T) = Factors(msg_init(N,N,N,T),msg_init(N,T),msg_init(N,T),fill(-1,T))
+
+mmap!(ind,b) = map!(argmax,ind,eachcol(b))
+mmap(b) = (ind=Array{Int}(undef,size(b,2)); mmap!(ind,b))
+
+function beliefs!(F,X)
+	@tullio F.b[i,t] = F.P[i,t]*X.msgs.s[i,t]*X.msgs.d[i,t]
+	msg_closure!(F.b)
+	mmap!(F.Rs,F.b)
+	return F
+end
+
+function gbp_equations!(X,F)
+	(;s,d,A,S) = X.msgs
+	(;M,P) = F
+
+	@tullio X.msgs_up.s[c,t] = P[l,mod(t-1)]*s[l,mod(t-1)]*A[l,c,t]*S[l,c,t]
+	@tullio X.msgs_up.d[c,t] = P[r,mod(t+1)]*d[r,mod(t+1)]*A[c,r,mod(t+1)]*S[c,r,mod(t+1)]
+
+	msg_closure!(X.msgs_up.s)
+	msg_closure!(X.msgs_up.d)
+	
+	@tullio X.msgs_up.A[l,c,t] = P[k,mod(t-2)]*s[k,mod(t-2)]*A[k,l,mod(t-1)]*M[k,l,c,mod(t-1)]/X.msgs_up.s[l,mod(t-1)]
+	@tullio X.msgs_up.S[l,c,t] = P[r,mod(t+1)]*d[r,mod(t+1)]*S[c,r,mod(t+1)]*M[l,c,r,t]/X.msgs_up.d[c,t]
+
+	msg_closure!(X.msgs_up.A)
+	msg_closure!(X.msgs_up.S)
+
+	return X
+end
+
+function msg_gradient_descent!(X)
+	w = X.w
+	@tullio X.msgs.s[c,t] = (1-w)*X.msgs.s[c,t] + (w)*X.msgs_up.s[c,t]
+	@tullio X.msgs.d[c,t] = (1-w)*X.msgs.d[c,t] + (w)*X.msgs_up.d[c,t]
+	@tullio X.msgs.A[l,c,t] = (1-w^2)*X.msgs.A[l,c,t] + (w^2)*X.msgs_up.A[l,c,t]
+	@tullio X.msgs.S[l,c,t] = (1-w^2)*X.msgs.S[l,c,t] + (w^2)*X.msgs_up.S[l,c,t]
+	return X
+end
+
+function gbp_step!(X,F) 
+	gbp_equations!(X,F)
+	msg_gradient_descent!(X)
+	return X
+end
+
+uniform_prior!(F) = (fill!(F.P,1.0)|>msg_closure!; F)
+
+function collapse_prior!(F,collapsed::Pair...)
+	uniform_prior!(F)
+	foreach(collapsed) do (t,q)
+		fill!(view(F.P,:,t),0.0)
+		fill!(view(F.P,q,t),1.0)
 	end
+	return F
 end
-
-function decode_random(M,P,w)
-	b = copy(P)
-	decode_random!(b,M,P,w)
-end
+collapse_prior!(F,collapsed::Int...) = collapse_prior!(F,map(splat(Pair),enumerate(collapsed))...)
+collapse_prior!(F) = uniform_prior!(F)
 
 end # module GBPAlgorithm
