@@ -41,21 +41,21 @@ using GBPAlgorithm
 using PlutoUI
 
 # ╔═╡ 9acb786d-8e76-44ee-b817-f0430405dc2a
-include(srcdir("data_utilities.jl"))
-
-# ╔═╡ af1edd4f-976c-4a43-8d76-d11c0695fa8e
-include(srcdir("decoding.jl"))
+begin
+	include(srcdir("Decoding.jl"))
+	using .Decoding
+end
 
 # ╔═╡ 3efb8183-f539-4de5-b792-8b81750c573e
 warm_up_results = let
-    run_it(;
+    Decoding.decode_multiple(;
         power_vals=0:1,with_noise_vals=true:true,pilots_vals=1:1,k_vals=2:2,
         T=10,w=0.25,niter=10,pilots_period=100,step=8,is_simulation=false,
         load_take=200,load_skip=0,should_save=false,savedir="test_$(today())",
         start_msg="Warmming up...", showprogressinfo=false
     );
 
-    run_it(;
+    Decoding.decode_multiple(;
         power_vals=0:1,with_noise_vals=true:true,pilots_vals=1:1,k_vals=2:2,
         T=10,w=0.25,niter=10,pilots_period=100,step=8,is_simulation=false,
         load_take=200,load_skip=0,should_save=true,savedir="test_$(today())",
@@ -190,7 +190,7 @@ md"## Running the GBP decoding algorithm"
 md"### Run decoder"
 
 # ╔═╡ 668740f7-776a-4bff-b4fe-f5c023e4b6b6
-run_results = run_it(; params...);
+# run_results = Decoding.decode_multiple(; params...);
 
 # ╔═╡ Cell order:
 # ╠═90f835b0-a3e8-11ee-3e33-9719b5d2efcb
@@ -200,7 +200,6 @@ run_results = run_it(; params...);
 # ╠═aae0e074-a287-42a4-bc6d-a6d9637aad0b
 # ╠═d42b9d61-0ee7-4907-bae7-b785a6f13a99
 # ╠═9acb786d-8e76-44ee-b817-f0430405dc2a
-# ╠═af1edd4f-976c-4a43-8d76-d11c0695fa8e
 # ╟─3efb8183-f539-4de5-b792-8b81750c573e
 # ╟─7c865aca-8306-40a2-a35e-afd627c12c1d
 # ╟─f7e0d5e4-0fa4-4d03-a1d8-7ab640109f0f
