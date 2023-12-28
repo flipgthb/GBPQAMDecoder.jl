@@ -1,7 +1,7 @@
 name = "GBPAlgorithm"
 uuid = "52f5dfbb-b0c2-49ff-99e4-0d4f43f103e5"
 authors = ["Felippe Alves <flipgm@gmail.com>"]
-version = "0.1.0"
+version = "1.0.0"
 
 [deps]
 FGenerators = "4fd0377b-cfdc-4941-97f4-8d7ddbb8981e"

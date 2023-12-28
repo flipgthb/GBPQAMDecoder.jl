@@ -1,7 +1,7 @@
 name = "DataPrep"
 uuid = "d40174be-394b-476a-94dd-cdf19e683a9d"
 authors = ["Felippe Alves <flipgm@gmail.com>"]
-version = "0.1.0"
+version = "1.0.0"
 
 [deps]
 Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"
