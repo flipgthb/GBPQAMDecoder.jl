@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "5902aa4cbdc90f37fe4ffcd1edcfda0f659c4971"
+project_hash = "fcaf1a03f43730f617e1ecbadf378171f51cfb07"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -198,7 +198,7 @@ version = "1.6.1"
 deps = ["Chain", "DataFrames", "Distributions", "LinearAlgebra", "NamedTupleTools", "Transducers"]
 path = "src/DataPrep"
 uuid = "d40174be-394b-476a-94dd-cdf19e683a9d"
-version = "0.1.0"
+version = "1.0.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -339,7 +339,7 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 deps = ["FGenerators", "LinearAlgebra", "StatsBase", "Transducers", "Tullio"]
 path = "src/GBPAlgorithm"
 uuid = "52f5dfbb-b0c2-49ff-99e4-0d4f43f103e5"
-version = "0.1.0"
+version = "1.0.0"
 
 [[deps.HypergeometricFunctions]]
 deps = ["DualNumbers", "LinearAlgebra", "OpenLibm_jll", "SpecialFunctions"]
@@ -445,6 +445,12 @@ weakdeps = ["StaticArrays"]
 
     [deps.LazyArrays.extensions]
     LazyArraysStaticArraysExt = "StaticArrays"
+
+[[deps.LeftChildRightSiblingTrees]]
+deps = ["AbstractTrees"]
+git-tree-sha1 = "fb6803dafae4a5d62ea5cab204b1e657d9737e7f"
+uuid = "1d6d02ad-be62-4b6b-8a6d-2f90e265016e"
+version = "0.2.0"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -563,6 +569,17 @@ version = "0.14.3"
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
 
+[[deps.ObservablePmap]]
+deps = ["Distributed", "Logging", "Observables"]
+git-tree-sha1 = "8afaa8d730c922e7d3304f51eb7f1036fcb0c89d"
+uuid = "471f3579-fe7c-4d8d-9c38-de9ac94d91b4"
+version = "0.2.1"
+
+[[deps.Observables]]
+git-tree-sha1 = "7438a59546cf62428fc9d1bc94729146d37a7225"
+uuid = "510215fc-4207-5dde-b226-833fc4488ee2"
+version = "0.5.5"
+
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
@@ -640,6 +657,12 @@ version = "2.3.1"
 [[deps.Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[deps.ProgressLogging]]
+deps = ["Logging", "SHA", "UUIDs"]
+git-tree-sha1 = "80d919dee55b9c50e8d9e2da5eeafff3fe58b539"
+uuid = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
+version = "0.1.4"
 
 [[deps.ProgressMeter]]
 deps = ["Distributed", "Printf"]
@@ -844,6 +867,12 @@ version = "1.11.1"
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 version = "1.10.0"
+
+[[deps.TerminalLoggers]]
+deps = ["LeftChildRightSiblingTrees", "Logging", "Markdown", "Printf", "ProgressLogging", "UUIDs"]
+git-tree-sha1 = "f133fab380933d042f6796eda4e130272ba520ca"
+uuid = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
+version = "0.1.7"
 
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]

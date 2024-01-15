@@ -32,7 +32,7 @@ function load_problem_data(task_info)
 		end
 	else
 		@warn "Simulating signal..."
-		symbol_sequence_length=min(load_batches*pilots_period,size(dataset(task_info.signal_file),1))
+		symbol_sequence_length=min(load_batches*pilots_period,262_000)
 		add_pilots_info!(
             simulate_signal_table(
                 task_info,
@@ -47,12 +47,25 @@ function load_problem_data(task_info)
     return (;model_table,signal_table)
 end
 
-progress_info_msg(prog,showinfo) = showinfo && next!(prog)
+function progress_info_msg(prog,task_info)
+    (;power,with_noise,pilots,k) = task_info
+    (;T,step,w,niter) = task_info.alg_params
+    showvalues = [(:power,power),(:with_noise,with_noise),(:pilots,pilots),
+                  (:k,k),(:T,T),(:step,step),(:w,w),(:niter,niter)]
+    task_info.alg_params.showprogressinfo && next!(prog; showvalues)
+end
+
+# function task_info_msg(task_info)
+#     (;T,step) = task_info.alg_params
+#     (;power,with_noise,pilots,k) = task_info
+#     @info "Running algorithm:" "Avg. Power [dBm]"=power "With 4.5dB noise"=with_noise "Pilots"=pilots "Number of mixture components"=k "Sequence length"=T "Step"=step
+# end
 
 function task_info_msg(task_info)
     (;T,step) = task_info.alg_params
     (;power,with_noise,pilots,k) = task_info
-    @info "Running algorithm:" "Avg. Power [dBm]"=power "With 4.5dB noise"=with_noise "Pilots"=pilots "Number of mixture components"=k "Sequence length"=T "Step"=step
+    msg = "Deocding: $(power)dBm with$(with_noise ? " " : "out ")noise, $(pilots) pilots,k=$(k),T=$(T),step=$(step)"
+    rpad(msg,60)
 end
 
 function save_info_msg(dir)
@@ -77,14 +90,19 @@ maxparts(nsyms,partlen,step) = floor(Int,1 + (nsyms - partlen)/step)
 maxparts(seqdf::DataFrame,partlen,step) = maxparts(size(seqdf,1),partlen,step)
 
 function solve_decoding_task(task_info)
-    task_info_msg(task_info)
     (;model_table,signal_table) = load_problem_data(task_info)
     (;T,w,niter,step,showprogressinfo) = task_info.alg_params
+    # showprogressinfo && task_info_msg(task_info)
     N = length(task_info.qam_encoding)
     decode_iter! = GBPAlgorithm.GBPDecoder(N,T,w)
     factors = GBPAlgorithm.Factors(N,T)
     n = maxparts(size(signal_table,1),T,step)
-    prog = Progress(n; showspeed=true)
+    prog = Progress(n;
+            desc=task_info_msg(task_info),
+            barglyphs=BarGlyphs('|','█', ['▁' ,'▂' ,'▃' ,'▄' ,'▅' ,'▆', '▇'],' ','|',),
+            barlen=16,
+            showspeed=true
+        )
     R = withprogress(eachrow(signal_table); interval=10^-2)|>
         Partition(T,step)|>
         Enumerate()|>
@@ -98,7 +116,8 @@ function solve_decoding_task(task_info)
             GBPAlgorithm.beliefs!(factors,decode_iter!)
             transform!(sequence,:Ts=>(x->copy(factors.Rs))=>:Rs)
             transform!(sequence,[:Ts,:Rs]=>((t,r)->t.!=r)=>:error)
-            progress_info_msg(prog,showprogressinfo)
+            # progress_info_msg(prog,task_info)
+            showprogressinfo && ProgressMeter.next!(prog)
             getresults(sequence,step,part_idx)
         end|>
         Take(n)|>

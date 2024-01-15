@@ -18,7 +18,7 @@ warm_up_results = let
         load_batches=2
     )
 
-    map(test_tasks) do task_info
+    results = map(test_tasks) do task_info
         produce_or_load(solve_decoding_task,task_info,datadir("results","testing_script"); force=true)
     end
 end;
